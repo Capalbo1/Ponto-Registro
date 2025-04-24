@@ -1,23 +1,23 @@
 :root {
-    --primary-color: #4a6bff;
-    --secondary-color: #f8f9fa;
-    --accent-color: #ff6b6b;
-    --text-color: #333;
-    --light-text: #fff;
+    --primary: #4285F4;
+    --secondary: #34A853;
+    --error: #EA4335;
+    --background: #f5f7ff;
+    --card: #ffffff;
+    --text: #202124;
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 body {
-    background-color: #f5f7ff;
-    color: var(--text-color);
-    line-height: 1.6;
-    height: 100vh;
+    background: var(--background);
+    color: var(--text);
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -27,32 +27,34 @@ body {
 .container {
     width: 100%;
     max-width: 600px;
-    padding: 30px;
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 40px;
+    margin: 20px;
 }
 
 h1 {
+    color: var(--primary);
     text-align: center;
-    margin-bottom: 30px;
-    color: var(--primary-color);
+    margin-bottom: 32px;
+    font-size: 28px;
 }
 
 .form-group {
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 label {
     display: block;
     margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--primary-color);
+    font-weight: 500;
+    color: var(--primary);
 }
 
 input, select {
     width: 100%;
-    padding: 12px 15px;
+    padding: 14px 16px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 16px;
@@ -60,51 +62,52 @@ input, select {
 }
 
 input:focus, select:focus {
-    border-color: var(--primary-color);
+    border-color: var(--primary);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(74, 107, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(66,133,244,0.2);
 }
 
 .btn {
-    display: block;
     width: 100%;
-    padding: 15px;
-    background-color: var(--primary-color);
+    padding: 16px;
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s;
-    margin-top: 20px;
+    margin-top: 8px;
 }
 
 .btn:hover {
-    background-color: #3a5bef;
+    background: #3367D6;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(74, 107, 255, 0.3);
 }
 
-.btn:active {
-    transform: translateY(0);
+.btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
 }
 
 .registro {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: var(--secondary-color);
+    margin-top: 32px;
+    padding: 24px;
+    background: #f8f9fa;
     border-radius: 8px;
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--secondary);
+    animation: fadeIn 0.5s ease;
 }
 
 .registro h3 {
-    color: var(--primary-color);
-    margin-bottom: 10px;
+    color: var(--secondary);
+    margin-bottom: 16px;
 }
 
 .registro p {
     margin-bottom: 8px;
+    line-height: 1.6;
 }
 
 .hidden {
@@ -113,17 +116,17 @@ input:focus, select:focus {
 
 .loading {
     text-align: center;
-    margin: 20px 0;
+    margin: 24px 0;
 }
 
 .spinner {
-    border: 4px solid rgba(0, 0, 0, 0.1);
+    border: 4px solid rgba(0,0,0,0.1);
     border-radius: 50%;
-    border-top: 4px solid var(--primary-color);
-    width: 30px;
-    height: 30px;
+    border-top: 4px solid var(--primary);
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
+    margin: 0 auto 16px;
 }
 
 @keyframes spin {
@@ -131,9 +134,17 @@ input:focus, select:focus {
     100% { transform: rotate(360deg); }
 }
 
-@media (max-height: 700px) {
-    body {
-        align-items: flex-start;
-        padding-top: 30px;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 24px;
+    }
+    
+    h1 {
+        font-size: 24px;
     }
 }

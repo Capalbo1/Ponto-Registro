@@ -1,8 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do DOM
     const registrarBtn = document.getElementById('registrarBtn');
-    
-    registrarBtn.addEventListener('click', function() {
-        const nome = document.getElementById('nome').value;
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFW5bz939j8izEqDc2KsWl4L_3NNHSGiIMhhB944v-w6qsQROL0mnpNrS8T9T5X0eH/exec';
+
+    // Função para formatar data/hora (agora definida corretamente)
+    function formatarDataHora(data) {
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, '0');
+        const minutos = String(data.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+    }
+
+    // Evento de clique do botão
+    registrarBtn.addEventListener('click', async function() {
+        const nome = document.getElementById('nome').value.trim();
         const instituicao = document.getElementById('instituicao').value;
         
         if (!nome || !instituicao) {
@@ -14,59 +27,62 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('loading').classList.remove('hidden');
         registrarBtn.disabled = true;
         
-        // Obter data/hora atual
-        const agora = new Date();
-        const dataHora = formatarDataHora(agora);
-        
-        // Obter localização
-        obterLocalizacaoCompleta()
-            .then(resultado => {
-                // Preencher dados do registro
-                document.getElementById('registroNome').textContent = nome;
-                document.getElementById('registroInstituicao').textContent = instituicao;
-                document.getElementById('registroData').textContent = dataHora;
-                document.getElementById('registroLocalizacao').textContent = resultado.localizacao;
-                document.getElementById('registroEndereco').textContent = resultado.endereco || "Endereço não disponível";
-                document.getElementById('registroCoordenadas').textContent = resultado.coordenadas || "Coordenadas não disponíveis";
-                
-                // Esconder loading e mostrar registro
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('registro').classList.remove('hidden');
-                registrarBtn.disabled = false;
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                document.getElementById('registroLocalizacao').textContent = "Localização não disponível";
-                document.getElementById('registroEndereco').textContent = "Não foi possível obter o endereço";
-                
-                // Esconder loading e mostrar registro mesmo com erro
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('registro').classList.remove('hidden');
-                registrarBtn.disabled = false;
+        try {
+            // Obter data/hora atual (usando a função agora definida)
+            const agora = new Date();
+            const dataHora = formatarDataHora(agora);
+            
+            // Obter localização com fallback
+            const resultado = await obterLocalizacaoCompleta();
+            
+            // Preencher dados na tela
+            preencherDadosRegistro(nome, instituicao, dataHora, resultado);
+            
+            // Obter IP
+            const ip = await obterIP();
+            
+            // Enviar para o Google Sheets
+            await enviarParaGoogleSheets({
+                nome,
+                instituicao,
+                dataHora,
+                localizacao: resultado.localizacao,
+                endereco: resultado.endereco || "N/A",
+                coordenadas: resultado.coordenadas || "N/A",
+                ip: ip || "N/A"
             });
+            
+        } catch (error) {
+            console.error('Erro no processo principal:', error);
+            alert('Ocorreu um erro ao registrar. Tente novamente.');
+        } finally {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('registro').classList.remove('hidden');
+            registrarBtn.disabled = false;
+        }
     });
-    
-    // Função para formatar data e hora
-    function formatarDataHora(data) {
-        const dia = String(data.getDate()).padStart(2, '0');
-        const mes = String(data.getMonth() + 1).padStart(2, '0');
-        const ano = data.getFullYear();
-        const horas = String(data.getHours()).padStart(2, '0');
-        const minutos = String(data.getMinutes()).padStart(2, '0');
-        
-        return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+
+    // Função para preencher os dados na tela
+    function preencherDadosRegistro(nome, instituicao, dataHora, resultado) {
+        document.getElementById('registroNome').textContent = nome;
+        document.getElementById('registroInstituicao').textContent = instituicao;
+        document.getElementById('registroData').textContent = dataHora;
+        document.getElementById('registroLocalizacao').textContent = 
+            resultado?.localizacao || "Localização não disponível";
+        document.getElementById('registroEndereco').textContent = 
+            resultado?.endereco || "Endereço não disponível";
+        document.getElementById('registroCoordenadas').textContent = 
+            resultado?.coordenadas || "Coordenadas não disponíveis";
     }
-    
-    // Função principal para obter localização completa
+
+    // Função para obter localização completa
     async function obterLocalizacaoCompleta() {
         try {
-            // 1. Tentar obter geolocalização
             const posicao = await obterGeolocalizacao();
             const lat = posicao.coords.latitude;
             const lon = posicao.coords.longitude;
             const coordenadas = `Lat: ${lat.toFixed(6)}, Long: ${lon.toFixed(6)}`;
             
-            // 2. Obter endereço completo
             const endereco = await obterEnderecoPorCoordenadas(lat, lon);
             
             return {
@@ -77,22 +93,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Falha na geolocalização:', error);
-            
-            // Se falhar, tentar por IP
-            try {
-                const localizacaoIP = await obterLocalizacaoPorIP();
-                return {
-                    localizacao: "Obtido via IP",
-                    endereco: localizacaoIP.endereco,
-                    coordenadas: localizacaoIP.coordenadas || "Precisão limitada"
-                };
-            } catch (ipError) {
-                console.error('Falha na localização por IP:', ipError);
-                throw new Error('Não foi possível obter a localização');
-            }
+            const localizacaoIP = await obterLocalizacaoPorIP();
+            return {
+                localizacao: "Obtido via IP",
+                endereco: localizacaoIP.endereco,
+                coordenadas: localizacaoIP.coordenadas || "Precisão limitada"
+            };
         }
     }
-    
+
     // Função para obter geolocalização
     function obterGeolocalizacao() {
         return new Promise((resolve, reject) => {
@@ -108,8 +117,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
-    // Função para obter endereço por coordenadas (usando Nominatim - OpenStreetMap)
+
+    // Função para obter endereço por coordenadas
     async function obterEnderecoPorCoordenadas(lat, lon) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
@@ -118,53 +127,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Erro na API de geocodificação');
             }
             
-            const data = await response.json();
-            return data.address || data;
-            
+            return await response.json();
         } catch (error) {
             console.error('Erro ao obter endereço:', error);
             throw error;
         }
     }
-    
+
     // Função para formatar endereço
     function formatarEndereco(endereco) {
-        if (!endereco) return "Endereço não disponível";
+        if (!endereco || !endereco.address) return "Endereço não disponível";
         
+        const addr = endereco.address;
         const parts = [];
-        if (endereco.road) parts.push(endereco.road);
-        if (endereco.house_number) parts.push(endereco.house_number);
-        if (endereco.neighbourhood) parts.push(endereco.neighbourhood);
-        if (endereco.suburb) parts.push(endereco.suburb);
-        if (endereco.city || endereco.town || endereco.village) parts.push(endereco.city || endereco.town || endereco.village);
-        if (endereco.state) parts.push(endereco.state);
-        if (endereco.postcode) parts.push(endereco.postcode);
-        if (endereco.country) parts.push(endereco.country);
+        if (addr.road) parts.push(addr.road);
+        if (addr.house_number) parts.push(addr.house_number);
+        if (addr.neighbourhood) parts.push(addr.neighbourhood);
+        if (addr.suburb) parts.push(addr.suburb);
+        if (addr.city || addr.town || addr.village) parts.push(addr.city || addr.town || addr.village);
+        if (addr.state) parts.push(addr.state);
+        if (addr.postcode) parts.push(addr.postcode);
+        if (addr.country) parts.push(addr.country);
         
         return parts.join(', ');
     }
-    
-    // Função para obter localização por IP (simulada)
+
+    // Função para obter localização por IP
     async function obterLocalizacaoPorIP() {
-        return new Promise((resolve) => {
-            // Simulação - em produção usar uma API real como ipapi.co
-            setTimeout(() => {
-                const cidades = [
-                    { city: "São Paulo", region: "SP", country: "Brasil" },
-                    { city: "Rio de Janeiro", region: "RJ", country: "Brasil" },
-                    { city: "Belo Horizonte", region: "MG", country: "Brasil" },
-                    { city: "Porto Alegre", region: "RS", country: "Brasil" },
-                    { city: "Salvador", region: "BA", country: "Brasil" }
-                ];
-                
-                const randomCity = cidades[Math.floor(Math.random() * cidades.length)];
-                const endereco = `${randomCity.city}, ${randomCity.region}, ${randomCity.country}`;
-                
-                resolve({
-                    endereco: endereco,
-                    coordenadas: "Precisão limitada por IP"
-                });
-            }, 1000);
-        });
+        try {
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            return {
+                endereco: `${data.city}, ${data.region}, ${data.country_name}`,
+                coordenadas: "Precisão limitada por IP"
+            };
+        } catch (error) {
+            console.error('Erro ao obter localização por IP:', error);
+            return {
+                endereco: "Localização aproximada",
+                coordenadas: "Não disponível"
+            };
+        }
+    }
+
+    // Função para obter IP
+    async function obterIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch {
+            return "IP não disponível";
+        }
+    }
+
+    // Função para enviar dados ao Google Sheets
+    async function enviarParaGoogleSheets(dados) {
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dados)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Falha ao enviar dados:', error);
+            throw error;
+        }
     }
 });
